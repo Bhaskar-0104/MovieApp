@@ -1,74 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:mvvm_statemanagements/constants/my_app_icons.dart';
-import 'package:mvvm_statemanagements/models/movies_model.dart';
-import 'package:mvvm_statemanagements/repository/movies_repo.dart';
+import 'package:mvvm_statemanagements/constants/my_theme_data.dart';
 import 'package:mvvm_statemanagements/screens/favorites_screen.dart';
 import 'package:mvvm_statemanagements/service/init_getit.dart';
 import 'package:mvvm_statemanagements/service/navigation_service.dart';
+import 'package:mvvm_statemanagements/view_models/movies_provider.dart';
+import 'package:mvvm_statemanagements/view_models/theme_provider.dart';
 import 'package:mvvm_statemanagements/widgets/movies/movies_widget.dart';
+import 'package:provider/provider.dart';
 
-class MoviesScreen extends StatefulWidget {
+class MoviesScreen extends StatelessWidget {
   const MoviesScreen({super.key});
-
-  @override
-  State<MoviesScreen> createState() => _MoviesScreenState();
-}
-
-class _MoviesScreenState extends State<MoviesScreen> {
-  final List<Titles> _movies = [];
-  bool _isFetching = false;
-  String types = 'MOVIE';
-  String sortBy = 'SORT_BY_POPULARITY';
-  String pageToken = '';
-  final ScrollController _scrollController = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchMovies();
-    _scrollController.addListener(_onScroll);
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels ==
-            _scrollController.position.maxScrollExtent &&
-        !_isFetching) {
-      _fetchMovies();
-    }
-  }
-
-  Future<void> _fetchMovies() async {
-    if (_isFetching) return;
-    setState(() {
-      _isFetching = true;
-    });
-
-    try {
-      final MoviesModel movieModel = await getIt<MoviesRepo>().fetchMovies(
-        types: types,
-        sortBy: sortBy,
-        pageToken: pageToken,
-      );
-      setState(() {
-        _movies.addAll(movieModel.titles ?? []);
-        pageToken = movieModel.nextPageToken ?? '';
-      });
-    } catch (error) {
-      getIt<NavigationService>().showSnackbar(
-        'An error has been occured $error',
-      );
-    } finally {
-      setState(() {
-        _isFetching = false;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _scrollController.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,29 +24,62 @@ class _MoviesScreenState extends State<MoviesScreen> {
             },
             icon: Icon(MyAppIcons.favoriteRounded, color: Colors.red),
           ),
-          IconButton(
-            onPressed: () async {
-              // final List<Titles> movies = await getIt<ApiService>().fetchMovies();
-              // final List<Titles> movies = await getIt<MoviesRepo>()
-              //     .fetchMovies();
-              // log("movies $movies");
+          Consumer(
+            builder: (context, ThemeProvider themeProvider, child) {
+              return IconButton(
+                onPressed: () async {
+                  themeProvider.toogleTheme();
+                },
+                icon: Icon(
+                  themeProvider.themeData == MyThemeData.darkTheme
+                      ? MyAppIcons.darkMode
+                      : MyAppIcons.lightMode,
+                ),
+              );
             },
-            icon: Icon(MyAppIcons.darkMode),
           ),
         ],
       ),
-      body: ListView.builder(
-        controller: _scrollController,
-        itemCount: _movies.length + (_isFetching ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index < _movies.length) {
-            return Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: MoviesWidget(movieModel: _movies[index]),
-            );
-          } else {
-            return const LinearProgressIndicator();
+      body: Consumer(
+        builder: (context, MoviesProvider movieProvider, child) {
+          if (movieProvider.isLoading && movieProvider.movieList.isEmpty) {
+            return const Center(child: CircularProgressIndicator.adaptive());
+          } else if (movieProvider.fetchMoviesError.isNotEmpty) {
+            return Center(child: Text(movieProvider.fetchMoviesError));
           }
+          return NotificationListener<ScrollNotification>(
+            onNotification: (ScrollNotification scrollInfo) {
+              if (scrollInfo.metrics.pixels >=
+                      scrollInfo.metrics.maxScrollExtent &&
+                  !movieProvider.isLoading &&
+                  movieProvider.hasMore) {
+                movieProvider.getMovies();
+                return true;
+              }
+              return false;
+            },
+            child: ListView.builder(
+              itemCount:
+                  movieProvider.movieList.length +
+                  (movieProvider.isLoading ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index < movieProvider.movieList.length) {
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ChangeNotifierProvider.value(
+                      value: movieProvider.movieList[index],
+                      child: MoviesWidget(),
+                    ),
+                  );
+                } else {
+                  return const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Center(child: CircularProgressIndicator.adaptive()),
+                  );
+                }
+              },
+            ),
+          );
         },
       ),
     );

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mvvm_statemanagements/constants/my_app_constants.dart';
 import 'package:mvvm_statemanagements/constants/my_app_icons.dart';
 import 'package:mvvm_statemanagements/models/movies_model.dart';
 import 'package:mvvm_statemanagements/screens/movie_details.dart';
@@ -7,15 +6,15 @@ import 'package:mvvm_statemanagements/service/init_getit.dart';
 import 'package:mvvm_statemanagements/service/navigation_service.dart';
 import 'package:mvvm_statemanagements/widgets/movies/favorite_btn.dart';
 import 'package:mvvm_statemanagements/widgets/movies/genres_list_widget.dart';
+import 'package:provider/provider.dart';
 import '../cached_image.dart';
 
 class MoviesWidget extends StatelessWidget {
-  const MoviesWidget({super.key, required this.movieModel});
-
-  final Titles movieModel;
+  const MoviesWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final moviesModelProvider = Provider.of<Titles>(context);
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Material(
@@ -25,7 +24,10 @@ class MoviesWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(12.0),
           onTap: () {
             getIt<NavigationService>().navigate(
-              MovieDetailsScreen(movieModel: movieModel),
+              ChangeNotifierProvider.value(
+                value: moviesModelProvider,
+                child: MovieDetailsScreen(),
+              ),
             );
           },
           child: Padding(
@@ -36,11 +38,11 @@ class MoviesWidget extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Hero(
-                    tag: movieModel.id ?? '',
+                    tag: moviesModelProvider.id ?? '',
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12.0),
                       child: CachedImageWidget(
-                        imgUrl: movieModel.primaryImage?.url ?? "",
+                        imgUrl: moviesModelProvider.primaryImage?.url ?? "",
                       ),
                     ),
                   ),
@@ -50,7 +52,7 @@ class MoviesWidget extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          movieModel.originalTitle ?? '',
+                          moviesModelProvider.originalTitle ?? '',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -61,11 +63,15 @@ class MoviesWidget extends StatelessWidget {
                           children: [
                             Icon(Icons.star, color: Colors.amber, size: 20),
                             SizedBox(width: 5),
-                            Text("${movieModel.rating?.aggregateRating}/10"),
+                            Text(
+                              "${moviesModelProvider.rating?.aggregateRating}/10",
+                            ),
                           ],
                         ),
                         const SizedBox(height: 10),
-                        GenresListWidget(genres: movieModel.genres ?? []),
+                        GenresListWidget(
+                          genres: moviesModelProvider.genres ?? [],
+                        ),
                         Row(
                           mainAxisSize: MainAxisSize.max,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -77,11 +83,16 @@ class MoviesWidget extends StatelessWidget {
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              movieModel.startYear!.toString(),
+                              moviesModelProvider.startYear!.toString(),
                               style: TextStyle(color: Colors.grey),
                             ),
                             const Spacer(),
-                            FavoriteBtnWidget(movieModel: movieModel),
+                            ChangeNotifierProvider.value(
+                              value: moviesModelProvider,
+                              child: FavoriteBtnWidget(
+                                movieMosdel: moviesModelProvider,
+                              ),
+                            ),
                           ],
                         ),
                       ],

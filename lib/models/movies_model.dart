@@ -1,4 +1,6 @@
-class MoviesModel {
+import 'package:flutter/material.dart';
+
+class MoviesModel with ChangeNotifier {
   List<Titles>? titles;
   int? totalCount;
   String? nextPageToken;
@@ -27,7 +29,7 @@ class MoviesModel {
   }
 }
 
-class Titles {
+class Titles with ChangeNotifier {
   String? id;
   String? type;
   String? primaryTitle;
